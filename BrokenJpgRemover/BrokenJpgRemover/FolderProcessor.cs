@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic.FileIO;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -41,13 +42,13 @@ namespace BrokenJpgRemover
 
 				if (Configuration.IsRecursive)
 				{
-					var folders = Directory.GetDirectories(fullPathFolder, "*", SearchOption.TopDirectoryOnly);
+					var folders = Directory.GetDirectories(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly);
 					foreach (var subFolder in folders)
 						verificationTasks.Enqueue(new FolderVerificationTask(subFolder));
 				}
 
 				var files = Directory
-					.GetFiles(fullPathFolder, "*", SearchOption.TopDirectoryOnly)
+					.GetFiles(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly)
 					.Where(f => 
 							Configuration.Extensions.Any(extention => Path.GetExtension(f).ToLowerInvariant().EndsWith(extention)) &&
 							File.Exists(f))
@@ -67,7 +68,8 @@ namespace BrokenJpgRemover
 					{
 						if (Configuration.IsAutoDelete)
 						{
-							File.Delete(file);
+							FileSystem.DeleteFile(file, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
+							//File.Delete(file);
 							WriteConsole($"Deleted: {file}");
 						}
 						else

@@ -2,7 +2,7 @@
   "profiles": {
     "BrokenJpgRemover": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Temporary Files\" -d-"
+      "commandLineArgs": "\"C:\\Temporary Files\""
     },
     "WSL": {
       "commandName": "WSL2",
