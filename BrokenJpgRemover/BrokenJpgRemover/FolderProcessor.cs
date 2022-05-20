@@ -81,7 +81,9 @@ namespace BrokenJpgRemover
 				}
 			}
 
+			WriteConsole(string.Empty);
 			Console.WriteLine();
+
 			Console.WriteLine($"Folders scanned: {foldersCount}");
 			var deletePhrase = Configuration.IsAutoDelete ? "deleted" : "found";
 			Console.WriteLine($"Files scanned: {totalCount}");
