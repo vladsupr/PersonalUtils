@@ -23,6 +23,8 @@ namespace BrokenJpgRemover
 			var foldersCount = 0;
 			var foundCount = 0;
 
+			var lockObject = new object();
+
 			var processedFolder = new HashSet<string>();
 			var verificationTasks = new Queue<FolderVerificationTask>();
 			verificationTasks.Enqueue(new FolderVerificationTask(Configuration.Folder));
@@ -55,30 +57,34 @@ namespace BrokenJpgRemover
 					.ToList();
 
 				int index = 0;
-				foreach (var file in files)
+				Parallel.ForEach(files, file =>
 				{
-					index++;
-					totalCount++;
+					Interlocked.Increment(ref index);
+					Interlocked.Increment(ref totalCount);
 					try
 					{
-						WriteConsole(@$"Processing: {folder}: ({index} from {files.Count})");
+						lock (lockObject)
+							WriteConsole(@$"Processing: {folder}: ({index} from {files.Count})");
+
 						using var image = Image.FromFile(file);
 					}
 					catch (OutOfMemoryException)
 					{
 						if (Configuration.IsAutoDelete)
-						{
 							FileSystem.DeleteFile(file, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
-							//File.Delete(file);
-							WriteConsole($"Deleted: {file}");
-						}
-						else
-							WriteConsole($"Found: {file}");
+						Interlocked.Increment(ref foundCount);
 
-						foundCount++;
-						Console.WriteLine();
+						lock (lockObject)
+						{
+							if (Configuration.IsAutoDelete)
+								WriteConsole($"Deleted: {file}");
+							else
+								WriteConsole($"Found: {file}");
+
+							Console.WriteLine();
+						}
 					}
-				}
+				});
 			}
 
 			WriteConsole(string.Empty);
