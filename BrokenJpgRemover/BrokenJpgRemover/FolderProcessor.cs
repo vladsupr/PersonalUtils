@@ -18,6 +18,10 @@ namespace BrokenJpgRemover
 		public record FolderVerificationTask(string folder);
 		public void Process()
 		{
+			var totalCount  = 0;
+			var foldersCount = 0;
+			var foundCount = 0;
+
 			var processedFolder = new HashSet<string>();
 			var verificationTasks = new Queue<FolderVerificationTask>();
 			verificationTasks.Enqueue(new FolderVerificationTask(Configuration.Folder));
@@ -31,6 +35,7 @@ namespace BrokenJpgRemover
 				if (processedFolder.TryGetValue(fullPathFolder, out var actualFolder) || !Directory.Exists(fullPathFolder)) continue;
 
 				processedFolder.Add(fullPathFolder);
+				foldersCount++;
 
 				WriteConsole(@$"Processing: {folder}");
 
@@ -52,6 +57,7 @@ namespace BrokenJpgRemover
 				foreach (var file in files)
 				{
 					index++;
+					totalCount++;
 					try
 					{
 						WriteConsole(@$"Processing: {folder}: ({index} from {files.Count})");
@@ -62,14 +68,22 @@ namespace BrokenJpgRemover
 						if (Configuration.IsAutoDelete)
 						{
 							File.Delete(file);
-							WriteConsole($"Deleted: {file}\n");
+							WriteConsole($"Deleted: {file}");
 						}
 						else
-							WriteConsole($"Found: {file}\n");
+							WriteConsole($"Found: {file}");
+
+						foundCount++;
+						Console.WriteLine();
 					}
-					
 				}
 			}
+
+			Console.WriteLine();
+			Console.WriteLine($"Folders scanned: {foldersCount}");
+			var deletePhrase = Configuration.IsAutoDelete ? "deleted" : "found";
+			Console.WriteLine($"Files scanned: {totalCount}");
+			Console.WriteLine($"Files {deletePhrase}: {foundCount}");
 		}
 
 		private void WriteConsole(string message)
