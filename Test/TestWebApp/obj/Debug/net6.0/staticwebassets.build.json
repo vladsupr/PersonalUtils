@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "bvoVz/0z1zA1YEyQfAjsBHRghhSb9ZzqmuFVSUBz0Nk=",
+  "Hash": "iERoJv5wcOvH1nx/wrKNFwYWvB4DOhAncGq4w+EDaCk=",
   "Source": "TestWebApp",
   "BasePath": "_content/TestWebApp",
   "Mode": "Default",
@@ -51,6 +51,23 @@
       "OriginalItemSpec": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\obj\\Debug\\net6.0\\scopedcss\\projectbundle\\TestWebApp.bundle.scp.css"
     },
     {
+      "Identity": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\.well-known\\pki-validation\\godaddy.html",
+      "SourceId": "TestWebApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\",
+      "BasePath": "_content/TestWebApp",
+      "RelativePath": ".well-known/pki-validation/godaddy.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\.well-known\\pki-validation\\godaddy.html"
+    },
+    {
       "Identity": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\css\\site.css",
       "SourceId": "TestWebApp",
       "SourceType": "Discovered",
@@ -83,6 +100,23 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\favicon.ico"
+    },
+    {
+      "Identity": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\img\\avatar.jpg",
+      "SourceId": "TestWebApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\",
+      "BasePath": "_content/TestWebApp",
+      "RelativePath": "img/avatar.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\img\\avatar.jpg"
     },
     {
       "Identity": "C:\\source\\PersonalUtils\\Test\\TestWebApp\\wwwroot\\js\\site.js",
