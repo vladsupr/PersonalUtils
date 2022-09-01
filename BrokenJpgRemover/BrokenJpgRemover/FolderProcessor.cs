@@ -1,16 +1,11 @@
 ﻿using Microsoft.VisualBasic.FileIO;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BrokenJpgRemover
 {
 	internal class FolderProcessor
 	{
-		Configuration Configuration { get;init;}
+		Configuration Configuration { get; init; }
 		public FolderProcessor(Configuration configuration)
 		{
 			Configuration = configuration;
@@ -19,11 +14,20 @@ namespace BrokenJpgRemover
 		public record FolderVerificationTask(string folder);
 		public void Process()
 		{
-			var totalCount  = 0;
-			var foldersCount = 0;
-			var foundCount = 0;
+			switch (Configuration.Action)
+			{
+				case Action.Broken:
+					ProcessBroken();
+					break;
+				case Action.Info:
+					ProcessInfo();
+					break;
+			}
+		}
 
-			var lockObject = new object();
+		public void ProcessSubFolders(Action<string, string> processFolderAction)
+		{
+			var foldersCount = 0;
 
 			var processedFolder = new HashSet<string>();
 			var verificationTasks = new Queue<FolderVerificationTask>();
@@ -49,9 +53,56 @@ namespace BrokenJpgRemover
 						verificationTasks.Enqueue(new FolderVerificationTask(subFolder));
 				}
 
+				processFolderAction(folder, fullPathFolder);
+			}
+		}
+
+		record FolderInfo(string folderName, int files, int folders, double sizeInMB);
+		public void ProcessInfo()
+		{
+			var folders = new List<FolderInfo>();
+			var rootFullPath = Path.GetFullPath(Configuration.Folder);
+
+			ProcessSubFolders((folder, fullPathFolder) =>
+			{
+				var foldersCount = FileSystem.GetDirectories(fullPathFolder).Count;
+				var files = FileSystem.GetFiles(fullPathFolder);
+
+				var filesCount = files.Count;
+				var sizeInMB = files.Sum(file => (double)FileSystem.GetFileInfo(file).Length / 1024 / 1024);
+
+				var folderName = fullPathFolder;
+				if (folderName.StartsWith(rootFullPath))
+					folderName = "~" + folderName[rootFullPath.Length..];
+
+				folders.Add(new FolderInfo(folderName, filesCount, foldersCount, sizeInMB));
+			});
+
+			using TextWriter writer = (string.IsNullOrEmpty(Configuration.OutputFile))
+				? Console.Out
+				: new StreamWriter(Configuration.OutputFile);
+
+			writer.WriteLine("Folder Name\tFiles\tFolders\tSize (mb)\tAverage (mb)");
+			foreach (var folder in folders.OrderBy(folder => folder.folderName))
+			{
+				var averageSize = folder.files > 0 ? (folder.sizeInMB / folder.files) : 0;
+				writer.WriteLine($"{folder.folderName}\t{folder.files}\t{folder.folders}\t{folder.sizeInMB}\t{averageSize}");
+			}
+		}
+
+		public void ProcessBroken()
+		{
+			var totalCount = 0;
+			var foldersCount = 0;
+			var foundCount = 0;
+
+			var lockObject = new object();
+
+			ProcessSubFolders((folder, fullPathFolder) =>
+			{
 				var files = Directory
 					.GetFiles(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly)
-					.Where(f => 
+					.Where(f =>
 							Configuration.Extensions.Any(extention => Path.GetExtension(f).ToLowerInvariant().EndsWith(extention)) &&
 							File.Exists(f))
 					.ToList();
@@ -85,7 +136,7 @@ namespace BrokenJpgRemover
 						}
 					}
 				});
-			}
+			});
 
 			WriteConsole(string.Empty);
 			Console.WriteLine();
