@@ -4,7 +4,7 @@
 	{
 		Broken,
 		Info,
-		Dublicates
+		Duplicates
 	}
 
 	internal record Configuration
@@ -35,8 +35,8 @@
 						configuration = configuration with { Action = Action.Info };
 					else if (action == "broken")
 						configuration = configuration with { Action = Action.Broken };
-					else if (action == "dublicates")
-						configuration = configuration with { Action = Action.Dublicates };
+					else if (action == "duplicates")
+						configuration = configuration with { Action = Action.Duplicates };
 					else
 						return null;
 
@@ -104,7 +104,7 @@
 
 		public static string GetUsageString()
 		{
-			return "Usage: ... [--info|--broken] [<initial folder>] [(<output file>)] [-r+|-] [-d+|-] [-e:<extentions>]\n\t-r - recursive (default: +)\n\t-d - auto delete (default: +)\n\t-e - (default jpg,jpeg,gif,bpm,png)";
+			return "Usage: ... [--info|--broken|--duplicates] [<initial folder>] [(<output file>)] [-r+|-] [-d+|-] [-e:<extentions>]\n\t-r - recursive (default: +)\n\t-d - auto delete (default: +)\n\t-e - (default jpg,jpeg,gif,bpm,png)";
 		}
 	}
 }

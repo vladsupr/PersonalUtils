@@ -2,7 +2,7 @@
   "profiles": {
     "BrokenJpgRemover": {
       "commandName": "Project",
-      "commandLineArgs": "--dublicates \"c:\\TEMP"
+      "commandLineArgs": "--duplicates c:\\TEMP (c:\\TEMP\\report.txt)"
     },
     "WSL": {
       "commandName": "WSL2",

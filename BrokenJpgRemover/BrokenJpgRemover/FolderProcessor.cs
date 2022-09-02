@@ -23,7 +23,7 @@ namespace BrokenJpgRemover
 				case Action.Info:
 					ProcessInfo();
 					break;
-				case Action.Dublicates:
+				case Action.Duplicates:
 					ProcessDublicates();
 					break;
 			}
@@ -99,7 +99,7 @@ namespace BrokenJpgRemover
 			WriteConsole($"Found {dublicatesCandidates.Count()} candidates");
 			Console.WriteLine();
 
-			var dublicates = new List<FileDublicateCandidate>();
+			var duplicates = new List<FileDublicateCandidate>();
 
 			using var sha = SHA512.Create();
 			var buffer = new byte[10 * 1024];
@@ -143,8 +143,30 @@ namespace BrokenJpgRemover
 					WriteConsole($"Found dublicate: {candidate.Files.First().fullFileName}, size: {candidate.FileSize}, files: {candidate.Files.Count()}");
 					Console.WriteLine();
 
-					dublicates.Add(candidate);
+					duplicates.Add(candidate);
 				}
+			}
+
+			WriteConsole(string.Empty);
+			Console.WriteLine($"Folders: {foldersCount}");
+			Console.WriteLine($"Files: {allFiles.Count}");
+			Console.WriteLine($"Dublicates: {duplicates.Count}");
+
+			if (duplicates.Count > 0 && !string.IsNullOrWhiteSpace(Configuration.OutputFile))
+			{
+				WriteConsole($"Writing report to: {Configuration.OutputFile}");
+				using var stream = File.OpenWrite(Configuration.OutputFile);
+				using var output = new StreamWriter(stream);
+
+				foreach (var duplicate in duplicates)
+				{
+					output.Write(duplicate.Files.First().fileName);
+					foreach (var file in duplicate.Files.Skip(1))
+						output.Write($"\t{file.fileName}");
+					output.WriteLine();
+				}
+
+				WriteConsole(string.Empty);
 			}
 		}
 
