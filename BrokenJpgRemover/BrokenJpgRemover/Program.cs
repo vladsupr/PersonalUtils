@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-namespace BrokenJpgRemover
+﻿namespace BrokenJpgRemover
 {
 	public static class Program
 	{
@@ -13,7 +11,7 @@ namespace BrokenJpgRemover
 				return;
 			}
 
-			Console.WriteLine(JsonSerializer.Serialize(configuration, new JsonSerializerOptions { WriteIndented = true }));
+			//Console.WriteLine(JsonSerializer.Serialize(configuration, new JsonSerializerOptions { WriteIndented = true }));
 
 			var folderProcessor = new FolderProcessor(configuration);
 			folderProcessor.Process();
