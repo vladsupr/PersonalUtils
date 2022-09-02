@@ -91,12 +91,12 @@ namespace BrokenJpgRemover
 			Console.WriteLine();
 
 			WriteConsole($"Searching for candidates by size...");
-			var dublicatesCandidates = allFiles
+			var duplicatesCandidates = allFiles
 				.GroupBy(p => p.fileSize)
 				.Where(p => p.Count() > 1)
 				.Select(p => new FileDublicateCandidate(p.Key, p.ToList())).ToList()
 				.OrderBy(p => p.Files.OrderBy(f => f.fullFileName).First().fileName).ToList();
-			WriteConsole($"Found {dublicatesCandidates.Count()} candidates");
+			WriteConsole($"Found {duplicatesCandidates.Count()} candidates");
 			Console.WriteLine();
 
 			var duplicates = new List<FileDublicateCandidate>();
@@ -104,40 +104,49 @@ namespace BrokenJpgRemover
 			using var sha = SHA512.Create();
 			var buffer = new byte[10 * 1024 * 1024];
 
-			foreach (var candidate in dublicatesCandidates)
+			foreach (var candidate in duplicatesCandidates)
 			{
 				WriteConsole($"Processing: {candidate.Files.First().fullFileName}");
-				var streams = candidate.Files.Select(fileInfo => File.OpenRead(fileInfo.fullFileName)).ToList();
 
 				long index = 0;
 				long fileSize = candidate.FileSize;
 				bool isEqual = true;
 
-				if (fileSize != 0)
-					while (index < fileSize && isEqual)
-					{
-						int leftToRead = (fileSize - index) > buffer.Length ? buffer.Length : (int)(fileSize - index);
+				var streams = candidate.Files.Select(fileInfo => File.OpenRead(fileInfo.fullFileName)).ToList();
 
-						WriteConsole($"Processing [{(double)index * 100 / fileSize: 0.0}%]: {candidate.Files.First().fullFileName}");
-						var lastSha = new byte[0];
-						foreach (var stream in streams)
+				try
+				{
+					if (fileSize != 0)
+						while (index < fileSize && isEqual)
 						{
-							stream.Read(buffer, 0, leftToRead);
-							var shaSum = sha.ComputeHash(buffer, 0, leftToRead);
+							int leftToRead = (fileSize - index) > buffer.Length ? buffer.Length : (int)(fileSize - index);
 
-							if (lastSha.Length != 0)
+							WriteConsole($"Processing [{(double)index * 100 / fileSize: 0.0}%]: {candidate.Files.First().fullFileName}");
+							var lastSha = new byte[0];
+							foreach (var stream in streams)
 							{
-								if (!shaSum.SequenceEqual(lastSha))
-								{
-									isEqual = false;
-									break;
-								}
-							}
-							lastSha = shaSum;
-						}
+								stream.Read(buffer, 0, leftToRead);
+								var shaSum = sha.ComputeHash(buffer, 0, leftToRead);
 
-						index += leftToRead;
-					}
+								if (lastSha.Length != 0)
+								{
+									if (!shaSum.SequenceEqual(lastSha))
+									{
+										isEqual = false;
+										break;
+									}
+								}
+								lastSha = shaSum;
+							}
+
+							index += leftToRead;
+						}
+				}
+				finally
+				{
+					streams.ForEach(stream => stream.Close());
+				}
+
 				if (isEqual)
 				{
 					WriteConsole($"Found dublicate: {candidate.Files.First().fullFileName}, size: {candidate.FileSize}, files: {candidate.Files.Count()}");
@@ -151,6 +160,29 @@ namespace BrokenJpgRemover
 			Console.WriteLine($"Folders: {foldersCount}");
 			Console.WriteLine($"Files: {allFiles.Count}");
 			Console.WriteLine($"Dublicates: {duplicates.Count}");
+
+			long sizeSaved = 0;
+			int filesDeleted = 0;
+			if (Configuration.IsAutoDelete)
+			{
+				for (int i = 0; i < duplicates.Count; i++)
+				{
+					var duplicate = duplicates[i];
+
+					foreach (var file in duplicate.Files.Skip(1))
+					{
+						filesDeleted++;
+						sizeSaved += file.fileSize;
+
+						WriteConsole($"Deleting [{(double)i * 100 / duplicates.Count: 0.0}%]: {file.fileName}");
+						FileSystem.DeleteFile(file.fullFileName, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
+					}
+				}
+
+				WriteConsole(string.Empty);
+				Console.WriteLine($"Files deleted: {filesDeleted}");
+				Console.WriteLine($"Spaces saves: {(double)sizeSaved / 1024 / 1024: 0.0} MB");
+			}
 
 			if (duplicates.Count > 0 && !string.IsNullOrWhiteSpace(Configuration.OutputFile))
 			{
@@ -166,7 +198,8 @@ namespace BrokenJpgRemover
 					output.WriteLine();
 				}
 
-				WriteConsole(string.Empty);
+				WriteConsole($"Report saved to: {Configuration.OutputFile}");
+				Console.WriteLine();
 			}
 		}
 
