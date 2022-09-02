@@ -102,7 +102,7 @@ namespace BrokenJpgRemover
 			var duplicates = new List<FileDublicateCandidate>();
 
 			using var sha = SHA512.Create();
-			var buffer = new byte[1024 * 1024];
+			var buffer = new byte[10 * 1024 * 1024];
 
 			foreach (var candidate in dublicatesCandidates)
 			{
