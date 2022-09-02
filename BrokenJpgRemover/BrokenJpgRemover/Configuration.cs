@@ -3,7 +3,8 @@
 	public enum Action
 	{
 		Broken,
-		Info
+		Info,
+		Dublicates
 	}
 
 	internal record Configuration
@@ -34,6 +35,8 @@
 						configuration = configuration with { Action = Action.Info };
 					else if (action == "broken")
 						configuration = configuration with { Action = Action.Broken };
+					else if (action == "dublicates")
+						configuration = configuration with { Action = Action.Dublicates };
 					else
 						return null;
 

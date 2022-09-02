@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualBasic.FileIO;
 using System.Drawing;
+using System.Security.Cryptography;
 
 namespace BrokenJpgRemover
 {
@@ -22,16 +23,19 @@ namespace BrokenJpgRemover
 				case Action.Info:
 					ProcessInfo();
 					break;
+				case Action.Dublicates:
+					ProcessDublicates();
+					break;
 			}
 		}
 
-		public void ProcessSubFolders(Action<string, string> processFolderAction)
+		public int ProcessSubFolders(string rootFolder, Action<string, string> processFolderAction)
 		{
 			var foldersCount = 0;
 
 			var processedFolder = new HashSet<string>();
 			var verificationTasks = new Queue<FolderVerificationTask>();
-			verificationTasks.Enqueue(new FolderVerificationTask(Configuration.Folder));
+			verificationTasks.Enqueue(new FolderVerificationTask(rootFolder));
 
 			while (verificationTasks.Count > 0)
 			{
@@ -39,7 +43,7 @@ namespace BrokenJpgRemover
 
 				var folder = currentTask.folder;
 				var fullPathFolder = Path.GetFullPath(folder);
-				if (processedFolder.TryGetValue(fullPathFolder, out var actualFolder) || !Directory.Exists(fullPathFolder)) continue;
+				if (processedFolder.TryGetValue(fullPathFolder, out _) || !Directory.Exists(fullPathFolder)) continue;
 
 				processedFolder.Add(fullPathFolder);
 				foldersCount++;
@@ -55,6 +59,93 @@ namespace BrokenJpgRemover
 
 				processFolderAction(folder, fullPathFolder);
 			}
+
+			return foldersCount;
+		}
+
+		public record FileInfo(string fileName, string fullFileName, long fileSize);
+		public record FileDublicateCandidate(long FileSize, IList<FileInfo> Files);
+
+		public void ProcessDublicates()
+		{
+			var allFiles = new List<FileInfo>();
+
+			var rootFolder = Path.GetFullPath(Configuration.Folder);
+			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
+			{
+				var fileNames = FileSystem.GetFiles(fullPathFolder).ToList();
+				foreach (var fileName in fileNames)
+				{
+					var fullFileName = Path.GetFullPath(fileName);
+					var fileInfo = FileSystem.GetFileInfo(fullFileName);
+
+					var shortFileName = fullFileName.StartsWith(rootFolder)
+						? fullFileName[rootFolder.Length..]
+						: fileName;
+
+					var fileRecord = new FileInfo(shortFileName, fullFileName, fileInfo.Length);
+					allFiles.Add(fileRecord);
+				}
+			});
+			WriteConsole($"Found {allFiles.Count} files in {foldersCount} folders");
+			Console.WriteLine();
+
+			WriteConsole($"Searching for candidates by size...");
+			var dublicatesCandidates = allFiles
+				.GroupBy(p => p.fileSize)
+				.Where(p => p.Count() > 1)
+				.Select(p => new FileDublicateCandidate(p.Key, p.ToList())).ToList()
+				.OrderBy(p => p.Files.OrderBy(f => f.fullFileName).First().fileName).ToList();
+			WriteConsole($"Found {dublicatesCandidates.Count()} candidates");
+			Console.WriteLine();
+
+			var dublicates = new List<FileDublicateCandidate>();
+
+			using var sha = SHA512.Create();
+			var buffer = new byte[10 * 1024];
+
+			foreach (var candidate in dublicatesCandidates)
+			{
+				WriteConsole($"Processing: {candidate.Files.First().fullFileName}");
+				var streams = candidate.Files.Select(fileInfo => File.OpenRead(fileInfo.fullFileName)).ToList();
+
+				long index = 0;
+				long fileSize = candidate.FileSize;
+				bool isEqual = true;
+
+				if (fileSize != 0)
+					while (index < fileSize && isEqual)
+					{
+						int leftToRead = (fileSize - index) > buffer.Length ? buffer.Length : (int)(fileSize - index);
+
+						WriteConsole($"Processing [{(double)index * 100 / fileSize: 0.0}%]: {candidate.Files.First().fullFileName}");
+						var lastSha = new byte[0];
+						foreach (var stream in streams)
+						{
+							stream.Read(buffer, 0, leftToRead);
+							var shaSum = sha.ComputeHash(buffer, 0, leftToRead);
+
+							if (lastSha.Length != 0)
+							{
+								if (!shaSum.SequenceEqual(lastSha))
+								{
+									isEqual = false;
+									break;
+								}
+							}
+							lastSha = shaSum;
+						}
+
+						index += leftToRead;
+					}
+				if (isEqual)
+				{
+					WriteConsole($"Found dublicate: {candidate.Files.First().fullFileName}, size: {candidate.FileSize}, files: {candidate.Files.Count()}");
+					Console.WriteLine();
+
+					dublicates.Add(candidate);
+				}
+			}
 		}
 
 		record FolderInfo(string folderName, int files, int folders, double sizeInMB);
@@ -63,7 +154,7 @@ namespace BrokenJpgRemover
 			var folders = new List<FolderInfo>();
 			var rootFullPath = Path.GetFullPath(Configuration.Folder);
 
-			ProcessSubFolders((folder, fullPathFolder) =>
+			ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
 			{
 				var foldersCount = FileSystem.GetDirectories(fullPathFolder).Count;
 				var files = FileSystem.GetFiles(fullPathFolder);
@@ -93,12 +184,11 @@ namespace BrokenJpgRemover
 		public void ProcessBroken()
 		{
 			var totalCount = 0;
-			var foldersCount = 0;
 			var foundCount = 0;
 
 			var lockObject = new object();
 
-			ProcessSubFolders((folder, fullPathFolder) =>
+			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
 			{
 				var files = Directory
 					.GetFiles(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly)
