@@ -101,14 +101,17 @@ namespace BrokenJpgRemover
 
 			var duplicates = new List<FileDublicateCandidate>();
 
+			long sizeSaved = 0;
+			int filesDeleted = 0;
+
 			using var sha = SHA512.Create();
 			var buffer = new byte[10 * 1024 * 1024];
 
-			foreach (var candidate in duplicatesCandidates)
+			for (var candidateIndex = 0; candidateIndex < duplicatesCandidates.Count; candidateIndex++)
 			{
-				WriteConsole($"Processing: {candidate.Files.First().fullFileName}");
+				var candidate = duplicatesCandidates[candidateIndex];
 
-				long index = 0;
+				long fileIndex = 0;
 				long fileSize = candidate.FileSize;
 				bool isEqual = true;
 
@@ -117,11 +120,11 @@ namespace BrokenJpgRemover
 				try
 				{
 					if (fileSize != 0)
-						while (index < fileSize && isEqual)
+						while (fileIndex < fileSize && isEqual)
 						{
-							int leftToRead = (fileSize - index) > buffer.Length ? buffer.Length : (int)(fileSize - index);
+							int leftToRead = (fileSize - fileIndex) > buffer.Length ? buffer.Length : (int)(fileSize - fileIndex);
 
-							WriteConsole($"Processing [{(double)index * 100 / fileSize: 0.0}%]: {candidate.Files.First().fullFileName}");
+							WriteConsole($"Processing [{(double)candidateIndex * 100 / duplicatesCandidates.Count: 0.0} %]: {candidate.Files.First().fullFileName} [{(double)fileIndex * 100 / fileSize: 0.0}%]");
 							var lastSha = new byte[0];
 							foreach (var stream in streams)
 							{
@@ -139,7 +142,7 @@ namespace BrokenJpgRemover
 								lastSha = shaSum;
 							}
 
-							index += leftToRead;
+							fileIndex += leftToRead;
 						}
 				}
 				finally
@@ -147,38 +150,37 @@ namespace BrokenJpgRemover
 					streams.ForEach(stream => stream.Close());
 				}
 
+				duplicates.Add(candidate);
+
 				if (isEqual)
 				{
-					WriteConsole($"Found dublicate: {candidate.Files.First().fullFileName}, size: {candidate.FileSize}, files: {candidate.Files.Count()}");
-					Console.WriteLine();
+					if (Configuration.IsAutoDelete)
+					{
+						foreach (var file in candidate.Files.Skip(1))
+						{
+							filesDeleted++;
+							sizeSaved += file.fileSize;
 
-					duplicates.Add(candidate);
+							FileSystem.DeleteFile(file.fullFileName, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
+							WriteConsole($"Deleted: {file.fileName}");
+							Console.WriteLine();
+						}
+					}
+					else
+					{
+						WriteConsole($"Found dublicate: {candidate.Files.First().fullFileName}, size: {candidate.FileSize}, files: {candidate.Files.Count()}");
+						Console.WriteLine();
+					}
 				}
 			}
 
 			WriteConsole(string.Empty);
 			Console.WriteLine($"Folders: {foldersCount}");
 			Console.WriteLine($"Files: {allFiles.Count}");
-			Console.WriteLine($"Dublicates: {duplicates.Count}");
+			Console.WriteLine($"Dublicates found: {duplicates.Count}");
 
-			long sizeSaved = 0;
-			int filesDeleted = 0;
 			if (Configuration.IsAutoDelete)
 			{
-				for (int i = 0; i < duplicates.Count; i++)
-				{
-					var duplicate = duplicates[i];
-
-					foreach (var file in duplicate.Files.Skip(1))
-					{
-						filesDeleted++;
-						sizeSaved += file.fileSize;
-
-						WriteConsole($"Deleting [{(double)i * 100 / duplicates.Count: 0.0}%]: {file.fileName}");
-						FileSystem.DeleteFile(file.fullFileName, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
-					}
-				}
-
 				WriteConsole(string.Empty);
 				Console.WriteLine($"Files deleted: {filesDeleted}");
 				Console.WriteLine($"Spaces saves: {(double)sizeSaved / 1024 / 1024: 0.0} MB");
