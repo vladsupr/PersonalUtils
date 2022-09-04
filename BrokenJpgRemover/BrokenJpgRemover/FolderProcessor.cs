@@ -12,7 +12,8 @@ namespace BrokenJpgRemover
 			Configuration = configuration;
 		}
 
-		public record FolderVerificationTask(string folder);
+		public record FolderVerificationTask(string folder, int level);
+
 		public void Process()
 		{
 			switch (Configuration.Action)
@@ -29,13 +30,13 @@ namespace BrokenJpgRemover
 			}
 		}
 
-		public int ProcessSubFolders(string rootFolder, Action<string, string> processFolderAction)
+		public int ProcessSubFolders(string rootFolder, Action<string, string, int> processFolderAction)
 		{
 			var foldersCount = 0;
 
 			var processedFolder = new HashSet<string>();
 			var verificationTasks = new Queue<FolderVerificationTask>();
-			verificationTasks.Enqueue(new FolderVerificationTask(rootFolder));
+			verificationTasks.Enqueue(new FolderVerificationTask(rootFolder, 1));
 
 			while (verificationTasks.Count > 0)
 			{
@@ -54,10 +55,10 @@ namespace BrokenJpgRemover
 				{
 					var folders = Directory.GetDirectories(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly);
 					foreach (var subFolder in folders)
-						verificationTasks.Enqueue(new FolderVerificationTask(subFolder));
+						verificationTasks.Enqueue(new FolderVerificationTask(subFolder, currentTask.level + 1));
 				}
 
-				processFolderAction(folder, fullPathFolder);
+				processFolderAction(folder, fullPathFolder, currentTask.level);
 			}
 
 			return foldersCount;
@@ -71,7 +72,7 @@ namespace BrokenJpgRemover
 			var allFiles = new List<FileInfo>();
 
 			var rootFolder = Path.GetFullPath(Configuration.Folder);
-			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
+			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder, level) =>
 			{
 				var fileNames = FileSystem.GetFiles(fullPathFolder).ToList();
 				foreach (var fileName in fileNames)
@@ -205,13 +206,13 @@ namespace BrokenJpgRemover
 			}
 		}
 
-		record FolderInfo(string folderName, int files, int folders, double sizeInMB);
+		record FolderInfo(string folderName, int level, int files, int folders, double sizeInMB);
 		public void ProcessInfo()
 		{
 			var folders = new List<FolderInfo>();
 			var rootFullPath = Path.GetFullPath(Configuration.Folder);
 
-			ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
+			ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder, level) =>
 			{
 				var foldersCount = FileSystem.GetDirectories(fullPathFolder).Count;
 				var files = FileSystem.GetFiles(fullPathFolder);
@@ -223,18 +224,18 @@ namespace BrokenJpgRemover
 				if (folderName.StartsWith(rootFullPath))
 					folderName = "~" + folderName[rootFullPath.Length..];
 
-				folders.Add(new FolderInfo(folderName, filesCount, foldersCount, sizeInMB));
+				folders.Add(new FolderInfo(folderName, level, filesCount, foldersCount, sizeInMB));
 			});
 
 			using TextWriter writer = (string.IsNullOrEmpty(Configuration.OutputFile))
 				? Console.Out
 				: new StreamWriter(Configuration.OutputFile);
 
-			writer.WriteLine("Folder Name\tFiles\tFolders\tSize (mb)\tAverage (mb)");
+			writer.WriteLine("Level\tFolder Name\tFiles\tFolders\tSize (mb)\tAverage (mb)");
 			foreach (var folder in folders.OrderBy(folder => folder.folderName))
 			{
 				var averageSize = folder.files > 0 ? (folder.sizeInMB / folder.files) : 0;
-				writer.WriteLine($"{folder.folderName}\t{folder.files}\t{folder.folders}\t{folder.sizeInMB}\t{averageSize}");
+				writer.WriteLine($"{folder.level}\t{folder.folderName}\t{folder.files}\t{folder.folders}\t{folder.sizeInMB}\t{averageSize}");
 			}
 		}
 
@@ -245,7 +246,7 @@ namespace BrokenJpgRemover
 
 			var lockObject = new object();
 
-			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder) =>
+			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder, level) =>
 			{
 				var files = Directory
 					.GetFiles(fullPathFolder, "*", System.IO.SearchOption.TopDirectoryOnly)
