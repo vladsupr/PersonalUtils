@@ -2,7 +2,7 @@
   "profiles": {
     "BrokenJpgRemover": {
       "commandName": "Project",
-      "commandLineArgs": "--squeeze c:\\TEMP (c:\\TEMP\\report.txt) 50"
+      "commandLineArgs": "--squeeze 50"
     },
     "WSL": {
       "commandName": "WSL2",
