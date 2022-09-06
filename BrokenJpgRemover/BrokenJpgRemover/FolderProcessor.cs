@@ -27,6 +27,9 @@ namespace BrokenJpgRemover
 				case Action.Duplicates:
 					ProcessDublicates();
 					break;
+				case Action.Squeeze:
+					ProcessSqueeze();
+					break;
 			}
 		}
 
@@ -62,6 +65,52 @@ namespace BrokenJpgRemover
 			}
 
 			return foldersCount;
+		}
+
+		public void ProcessSqueeze()
+		{
+			var rootFolder = Path.GetFullPath(Configuration.Folder);
+
+			int folderCount = 0;
+			int filesCount = 0;
+			long totalSize = 0;
+			var foldersCount = ProcessSubFolders(Configuration.Folder, (folder, fullPathFolder, level) =>
+			{
+				var fileNames = FileSystem.GetFiles(fullPathFolder).OrderBy(p => p).ToList();
+				if (fileNames.Count > Configuration.Count)
+				{
+					var filesToLeave = new List<string>(Configuration.Count);
+					for (int i = 0; i < Configuration.Count; i++)
+					{
+						var index = i * fileNames.Count / Configuration.Count;
+						filesToLeave.Add(fileNames[index]);
+					}
+
+					int deletedFilesCount = 0;
+					for (int i = 0; i < fileNames.Count; i++)
+					{
+						var fileName = fileNames[i];
+						if (filesToLeave.IndexOf(fileName) < 0)
+						{
+							WriteConsole($"Deleteting [{i * 100 / fileNames.Count}%]: {fileName}");
+
+							totalSize += FileSystem.GetFileInfo(fileName).Length;
+							FileSystem.DeleteFile(fileName, showUI: UIOption.OnlyErrorDialogs, recycle: RecycleOption.SendToRecycleBin);
+							deletedFilesCount++;
+							filesCount++;
+						}
+					}
+
+					folderCount++;
+					WriteConsole($"Cleared {deletedFilesCount} files in {folder}");
+					Console.WriteLine();
+				}
+			});
+
+			WriteConsole(string.Empty);
+			Console.WriteLine($"Removed files: {filesCount}");
+			Console.WriteLine($"In folders: {folderCount}");
+			Console.WriteLine($"Saves spaces: {(double)totalSize / 1024 / 1024:0.00} MB");
 		}
 
 		public record FileInfo(string fileName, string fullFileName, long fileSize);

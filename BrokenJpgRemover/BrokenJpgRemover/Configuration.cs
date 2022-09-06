@@ -4,7 +4,8 @@
 	{
 		Broken,
 		Info,
-		Duplicates
+		Duplicates,
+		Squeeze
 	}
 
 	internal record Configuration
@@ -15,7 +16,7 @@
 		public IReadOnlyList<string> Extensions { get; init; } = new[] { "jpg", "jpeg", "png", "gif", "bpm" };
 		public Boolean IsRecursive { get; init; } = true;
 		public Boolean IsAutoDelete { get; init; } = true;
-
+		public int Count { get; set; } = 50;
 	}
 
 	internal static class ConfigurationExtensions
@@ -37,6 +38,8 @@
 						configuration = configuration with { Action = Action.Broken };
 					else if (action == "duplicates")
 						configuration = configuration with { Action = Action.Duplicates };
+					else if (action == "squeeze")
+						configuration = configuration with { Action = Action.Squeeze };
 					else
 						return null;
 
@@ -92,6 +95,10 @@
 							return null;
 					}
 				}
+				else if (char.IsNumber(arg[0]))
+				{
+					configuration = configuration with { Count = int.Parse(arg) };
+				}
 				else
 				{
 					configuration = configuration with { Folder = arg };
@@ -104,7 +111,7 @@
 
 		public static string GetUsageString()
 		{
-			return "Usage: ... [--info|--broken|--duplicates] [<initial folder>] [(<output file>)] [-r+|-] [-d+|-] [-e:<extentions>]\n\t-r - recursive (default: +)\n\t-d - auto delete (default: +)\n\t-e - (default jpg,jpeg,gif,bpm,png)";
+			return "Usage: ... [--info|--broken|--duplicates|--squeeze] [<initial folder>] [(<output file>)] [<count>] [-r+|-] [-d+|-] [-e:<extentions>]\n\t-r - recursive (default: +)\n\t-d - auto delete (default: +)\n\t-e - (default jpg,jpeg,gif,bpm,png)";
 		}
 	}
 }
